@@ -1,0 +1,19 @@
+{
+  "name": "keyword-scraping-tool",
+  "version": "1.0.0",
+  "description": "Google Suggestion Seed Scraper with UI Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "stop": "node scripts/stop.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "playwright": "^1.44.0",
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
