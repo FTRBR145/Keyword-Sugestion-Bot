@@ -175,12 +175,13 @@ async function getSuggestions(page) {
       return results;
     }, CONFIG.MAX_SUGGESTIONS);
 
-    // Filter final: buang duplikat dan teks yang masih mengandung CSS
+    // Filter final: buang duplikat, CSS, dan sugesti < 2 kata (word completion)
     const seen = new Set();
     return suggestions.filter(s => {
       const clean = s.trim();
-      if (!clean || clean.length < 2 || clean.includes('{') || seen.has(clean)) return false;
-      seen.add(clean);
+      if (!clean || clean.length < 3 || clean.includes('{') || seen.has(clean.toLowerCase())) return false;
+      if (clean.split(/\s+/).length < 2) return false;
+      seen.add(clean.toLowerCase());
       return true;
     });
 
@@ -388,7 +389,7 @@ async function scrapeForPrefix(page, baseKeyword, char, onLog) {
 
     await randomDelay(60, 120);
 
-    // Ambil sugesti
+    // Ambil sugesti — validasi harus mengandung baseKeyword
     const suggestions = await getSuggestions(page);
     return suggestions;
   } catch (err) {
@@ -435,7 +436,7 @@ async function scrapeForSuffix(page, baseKeyword, char, onLog) {
 
     await randomDelay(60, 120);
 
-    // Ambil sugesti
+    // Ambil sugesti — validasi harus mengandung baseKeyword
     const suggestions = await getSuggestions(page);
     return suggestions;
   } catch (err) {
@@ -445,9 +446,61 @@ async function scrapeForSuffix(page, baseKeyword, char, onLog) {
 }
 
 /**
+ * Scrape MIDDLE: ketik keyword awal, lalu insert char setelah kata pertama.
+ * Contoh: "sunat anak" -> "sunat a anak"
+ */
+async function scrapeForMiddle(page, baseKeyword, char, onLog) {
+  try {
+    const words = baseKeyword.trim().split(' ');
+    if (words.length < 2) {
+      // Jika hanya 1 kata, middle tidak berlaku, return empty
+      return [];
+    }
+    const midWordIdx = Math.floor(words.length / 2);
+    const spaceIndex = words.slice(0, midWordIdx).join(' ').length;
+
+    const inputSelector = 'textarea[name="q"], input[name="q"]';
+    await clearInput(page);
+    await randomDelay(CONFIG.REQUEST_DELAY_MIN, CONFIG.REQUEST_DELAY_MAX);
+
+    await typeHumanLike(page, inputSelector, baseKeyword);
+    await randomDelay(80, 150);
+
+    await page.evaluate(({ ch, idx }) => {
+      const el = document.querySelector('textarea[name="q"], input[name="q"]');
+      if (!el) return;
+
+      el.focus();
+      const insertPos = idx; // Tepat sebelum spasi
+      el.setSelectionRange(insertPos, insertPos);
+
+      // Insert spasi + char (agak autocomplete membaca huruf terakhir, bukan spasi terakhir)
+      const before = el.value.substring(0, insertPos);
+      const after = el.value.substring(insertPos);
+      el.value = before + ' ' + ch + after;
+      
+      const newPos = insertPos + 2; // spasi (1) + char (1)
+      el.setSelectionRange(newPos, newPos);
+
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ' ' + ch }));
+      el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: ch }));
+    }, { ch: char, idx: spaceIndex });
+
+    await randomDelay(60, 120);
+
+    const suggestions = await getSuggestions(page);
+    return suggestions;
+  } catch (err) {
+    onLog(`⚠️  Error pada middle [${char}] "${baseKeyword}": ${err.message}`);
+    return [];
+  }
+}
+
+/**
  * Tahap 2: Seeding karakter di DEPAN keyword
  */
-async function scrapePrefix(page, goldenKeyword, chars, onLog, onProgress, cancelToken = { cancelled: false }) {
+async function scrapePrefix(page, goldenKeyword, chars, onLog, onProgress, cancelToken = { cancelled: false }, overallOffset = 0, overallSpan = 40) {
   const results = [];
   const charList = chars.split('');
 
@@ -462,12 +515,15 @@ async function scrapePrefix(page, goldenKeyword, chars, onLog, onProgress, cance
     const keywords = await scrapeForPrefix(page, goldenKeyword, char, onLog);
     results.push({ char, keywords });
 
+    const localPct = Math.round(((i + 1) / charList.length) * 100);
+    const overallPct = Math.round(overallOffset + ((i + 1) / charList.length) * overallSpan);
     onProgress({
       stage: 'prefix',
       goldenKeyword,
       char,
       found: keywords.length,
-      progress: Math.round(((i + 1) / charList.length) * 100),
+      progress: localPct,
+      overallPct,
     });
 
     await randomDelay(CONFIG.REQUEST_DELAY_MIN, CONFIG.REQUEST_DELAY_MAX);
@@ -479,7 +535,7 @@ async function scrapePrefix(page, goldenKeyword, chars, onLog, onProgress, cance
 /**
  * Tahap 3: Seeding karakter di BELAKANG keyword
  */
-async function scrapeSuffix(page, goldenKeyword, chars, onLog, onProgress, cancelToken = { cancelled: false }) {
+async function scrapeSuffix(page, goldenKeyword, chars, onLog, onProgress, cancelToken = { cancelled: false }, overallOffset = 0, overallSpan = 40) {
   const results = [];
   const charList = chars.split('');
 
@@ -494,12 +550,61 @@ async function scrapeSuffix(page, goldenKeyword, chars, onLog, onProgress, cance
     const keywords = await scrapeForSuffix(page, goldenKeyword, char, onLog);
     results.push({ char, keywords });
 
+    const localPct = Math.round(((i + 1) / charList.length) * 100);
+    const overallPct = Math.round(overallOffset + ((i + 1) / charList.length) * overallSpan);
     onProgress({
       stage: 'suffix',
       goldenKeyword,
       char,
       found: keywords.length,
-      progress: Math.round(((i + 1) / charList.length) * 100),
+      progress: localPct,
+      overallPct,
+    });
+
+    await randomDelay(CONFIG.REQUEST_DELAY_MIN, CONFIG.REQUEST_DELAY_MAX);
+  }
+
+  return results;
+}
+
+/**
+ * Tahap 4: Seeding karakter di TENGAH keyword
+ */
+async function scrapeMiddle(page, goldenKeyword, chars, onLog, onProgress, cancelToken = { cancelled: false }, overallOffset = 0, overallSpan = 30) {
+  const results = [];
+  const charList = chars.split('');
+  const words = goldenKeyword.trim().split(' ');
+
+  if (words.length < 2) {
+    onLog(`\n📌 [Tahap 4] Dibelati: Keyword "${goldenKeyword}" hanya 1 kata, tidak bisa ditengah.`);
+    return [];
+  }
+
+  const midWordIdx = Math.floor(words.length / 2);
+  const spaceIndex = words.slice(0, midWordIdx).join(' ').length;
+
+  onLog(`\n📌 [Tahap 4] Seeding TENGAH untuk: "${goldenKeyword}" (${charList.length} karakter)`);
+  const word1 = goldenKeyword.substring(0, spaceIndex);
+  const word2 = goldenKeyword.substring(spaceIndex + 1);
+
+  for (let i = 0; i < charList.length; i++) {
+    if (cancelToken.cancelled) throw new Error('CANCELLED');
+
+    const char = charList[i];
+    onLog(`   ➤ Middle [${char}] → "${word1} ${char} ${word2}"`);
+
+    const keywords = await scrapeForMiddle(page, goldenKeyword, char, onLog);
+    if (keywords.length > 0) results.push({ char, keywords });
+
+    const localPct = Math.round(((i + 1) / charList.length) * 100);
+    const overallPct = Math.round(overallOffset + ((i + 1) / charList.length) * overallSpan);
+    onProgress({
+      stage: 'middle',
+      goldenKeyword,
+      char,
+      found: keywords.length,
+      progress: localPct,
+      overallPct,
     });
 
     await randomDelay(CONFIG.REQUEST_DELAY_MIN, CONFIG.REQUEST_DELAY_MAX);
@@ -535,6 +640,7 @@ async function runScraper(targetKeyword, headless = true, onLog, onProgress, can
 
   const CHARS      = seedConfig.chars  || CONFIG.SEED_CHARS;
   const DO_PREFIX  = seedConfig.prefix !== false;
+  const DO_MIDDLE  = seedConfig.middle === true;
   const DO_SUFFIX  = seedConfig.suffix !== false;
 
   function checkCancel() {
@@ -545,8 +651,8 @@ async function runScraper(targetKeyword, headless = true, onLog, onProgress, can
     onLog(`🚀 Memulai Keyword Scraping Tool`);
     onLog(`🎯 Target: "${targetKeyword}"`);
     onLog(`🌐 Mode: ${headless ? 'Headless' : 'Visible (UI)'}`);
-    onLog(`🔡 Karakter: ${CHARS.length} char | Depan: ${DO_PREFIX ? '✓' : '✗'} | Belakang: ${DO_SUFFIX ? '✓' : '✗'}`);
-    onLog(`📊 Estimasi pencarian: ${CHARS.length * ((DO_PREFIX?1:0)+(DO_SUFFIX?1:0))}`);
+    onLog(`🔡 Karakter: ${CHARS.length} char | Depan: ${DO_PREFIX ? '✓' : '✗'} | Tengah: ${DO_MIDDLE ? '✓' : '✗'} | Belakang: ${DO_SUFFIX ? '✓' : '✗'}`);
+    onLog(`📊 Estimasi pencarian: ${CHARS.length * ((DO_PREFIX?1:0)+(DO_MIDDLE?1:0)+(DO_SUFFIX?1:0))}`);
 
     const { browser: b, page } = await createBrowser(headless);
     browser = b;
@@ -563,39 +669,60 @@ async function runScraper(targetKeyword, headless = true, onLog, onProgress, can
     }
 
     checkCancel();
-    onProgress({ stage: 'golden_done', goldenKeywords });
+    onProgress({ stage: 'golden_done', goldenKeywords, overallPct: 5 });
 
     const seedKeyword = targetKeyword.trim();
     onLog(`\n${'═'.repeat(50)}`);
     onLog(`🌱 Seeding dari: "${seedKeyword}"`);
     onLog(`${'═'.repeat(50)}`);
 
-    onProgress({ stage: 'processing_golden', current: 1, total: 1, keyword: seedKeyword });
+    onProgress({ stage: 'processing_golden', current: 1, total: 1, keyword: seedKeyword, overallPct: 8 });
 
     const prefix = [];
+    const middle = [];
     const suffix = [];
+
+    // Hitung span untuk progress agar 10% → 95%
+    const totalSpan = 85; 
+    const stagesCount = (DO_PREFIX?1:0) + (DO_MIDDLE?1:0) + (DO_SUFFIX?1:0);
+    const spanPerStage = stagesCount > 0 ? totalSpan / stagesCount : 0;
+    
+    let currentOffset = 10;
 
     // Tahap 2: Prefix
     if (DO_PREFIX) {
-      const result = await scrapePrefix(page, seedKeyword, CHARS, onLog, onProgress, cancelToken);
+      const result = await scrapePrefix(page, seedKeyword, CHARS, onLog, onProgress, cancelToken, currentOffset, spanPerStage);
       prefix.push(...result);
+      currentOffset += spanPerStage;
       checkCancel();
     } else {
       onLog(`⏭️  Seeding DEPAN dilewati`);
     }
 
-    // Tahap 3: Suffix
+    // Tahap 3: Middle
+    if (DO_MIDDLE && seedKeyword.includes(' ')) {
+      const result = await scrapeMiddle(page, seedKeyword, CHARS, onLog, onProgress, cancelToken, currentOffset, spanPerStage);
+      middle.push(...result);
+      currentOffset += spanPerStage;
+      checkCancel();
+    } else if (DO_MIDDLE) {
+      onLog(`⏭️  Seeding TENGAH dilewati (keyword hanya 1 kata)`);
+      currentOffset += spanPerStage;
+    }
+
+    // Tahap 4: Suffix
     if (DO_SUFFIX) {
-      const result = await scrapeSuffix(page, seedKeyword, CHARS, onLog, onProgress, cancelToken);
+      const result = await scrapeSuffix(page, seedKeyword, CHARS, onLog, onProgress, cancelToken, currentOffset, spanPerStage);
       suffix.push(...result);
     } else {
       onLog(`⏭️  Seeding BELAKANG dilewati`);
     }
 
-    const rawData = [{ goldenKeyword: seedKeyword, prefix, suffix }];
+    const rawData = [{ goldenKeyword: seedKeyword, prefix, middle, suffix }];
 
     let totalKeywords = 0;
     for (const p of prefix) totalKeywords += p.keywords.length;
+    for (const m of middle) totalKeywords += m.keywords.length;
     for (const s of suffix) totalKeywords += s.keywords.length;
 
     onLog(`\n${'═'.repeat(50)}`);
@@ -603,7 +730,7 @@ async function runScraper(targetKeyword, headless = true, onLog, onProgress, can
     onLog(`📈 Total kata kunci mentah terkumpul: ${totalKeywords}`);
     onLog(`${'═'.repeat(50)}\n`);
 
-    onProgress({ stage: 'scraping_done', totalKeywords });
+    onProgress({ stage: 'scraping_done', totalKeywords, overallPct: 95 });
 
     return { goldenKeywords, rawData };
   } finally {

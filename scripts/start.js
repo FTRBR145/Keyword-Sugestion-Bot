@@ -31,8 +31,8 @@ function killPort(port) {
 
 killPort(PORT);
 
-// Jalankan server
-const server = spawn('node', ['server.js'], {
+// Jalankan server dengan nodemon (akan otomatis restart jika ada perubahan file .js atau .html)
+const server = spawn('node', ['./node_modules/nodemon/bin/nodemon.js', '-e', 'js,html', 'server.js'], {
   stdio: 'inherit',
   cwd: __dirname + '/..',
 });

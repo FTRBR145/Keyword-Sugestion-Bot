@@ -1,523 +1,1493 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Google Suggestion Seed Scraper</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-  body { font-family: 'Inter', sans-serif; }
-  #logBox { font-family: 'JetBrains Mono', monospace; }
-  .log-line { animation: fadeIn .2s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
-  .pulse-dot { animation: pulse 1.4s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-  .progress-bar { transition: width .4s ease; }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #1e293b; }
-  ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-</style>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-
-<!-- HEADER -->
-<header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-10">
-  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-violet-600 rounded-lg flex items-center justify-center text-sm font-bold">K</div>
-      <div>
-        <h1 class="font-semibold text-white text-sm">Google Suggestion Seed Scraper</h1>
-        <p class="text-xs text-slate-500">Keyword Research Automation Tool</p>
-      </div>
-    </div>
-    <div id="statusBadge" class="px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400">Idle</div>
-  </div>
-</header>
-
-<main class="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-  <!-- LEFT PANEL -->
-  <div class="lg:col-span-1 flex flex-col gap-5">
-
-    <!-- Input Card -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-      <h2 class="font-semibold text-white mb-4 flex items-center gap-2">
-        <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
-        Pengaturan Scraping
-      </h2>
-
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs text-slate-400 mb-1.5">Kata Kunci Target</label>
-          <input id="keyword" type="text" placeholder="contoh: jasa desain logo"
-            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" />
-        </div>
-
-        <div class="flex items-center justify-between bg-slate-800 rounded-lg px-4 py-3">
-          <div>
-            <p class="text-sm text-white font-medium">Mode Browser</p>
-            <p class="text-xs text-slate-500">Tampilkan jendela browser</p>
-          </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="showBrowser" class="sr-only peer" />
-            <div class="w-10 h-5 bg-slate-700 peer-checked:bg-blue-600 rounded-full transition peer-focus:ring-2 peer-focus:ring-blue-500/30"></div>
-            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition peer-checked:translate-x-5"></div>
-          </label>
-        </div>
-
-        <!-- Seed Options -->
-        <div class="bg-slate-800 rounded-lg px-4 py-3 space-y-3">
-          <p class="text-sm text-white font-medium">Pengaturan Seed</p>
-
-          <!-- Prefix / Suffix toggle -->
-          <div class="space-y-2">
-            <p class="text-xs text-slate-400 uppercase tracking-wide">Arah Seeding</p>
-            <div class="grid grid-cols-2 gap-2">
-              <label class="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" id="seedPrefix" checked class="w-3.5 h-3.5 accent-blue-500" />
-                <span class="text-xs text-slate-300">Depan (a keyword)</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" id="seedSuffix" checked class="w-3.5 h-3.5 accent-blue-500" />
-                <span class="text-xs text-slate-300">Belakang (keyword a)</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Karakter toggle -->
-          <div class="space-y-2">
-            <p class="text-xs text-slate-400 uppercase tracking-wide">Karakter Seed</p>
-            <div class="grid grid-cols-3 gap-2">
-              <label class="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" id="useAlpha" checked class="w-3.5 h-3.5 accent-violet-500" />
-                <span class="text-xs text-slate-300">A – Z</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" id="useNumber" checked class="w-3.5 h-3.5 accent-violet-500" />
-                <span class="text-xs text-slate-300">0 – 9</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" id="useSymbol" class="w-3.5 h-3.5 accent-violet-500" />
-                <span class="text-xs text-slate-300">Simbol</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Estimasi -->
-          <div class="text-[11px] text-slate-500 pt-1 border-t border-slate-700" id="seedEstimate">
-            Estimasi: <span class="text-slate-300 font-medium" id="seedCount">72</span> pencarian
-          </div>
-        </div>
-
-        <button id="btnStart"
-          class="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          Mulai Scraping
-        </button>
-
-        <button id="btnCancel"
-          class="w-full hidden bg-red-600/20 hover:bg-red-600/40 border border-red-500/50 text-red-400 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          Stop / Cancel
-        </button>
-      </div>
-    </div>
-
-    <!-- Progress Card -->
-    <div id="progressCard" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hidden">
-      <h2 class="font-semibold text-white mb-4 flex items-center gap-2">
-        <span class="pulse-dot w-2 h-2 bg-green-400 rounded-full inline-block"></span>
-        Progress
-      </h2>
-      <div class="space-y-3">
-        <div>
-          <div class="flex justify-between text-xs mb-1.5">
-            <span class="text-slate-400" id="progressLabel">Inisialisasi...</span>
-            <span class="text-white font-medium" id="progressPct">0%</span>
-          </div>
-          <div class="w-full bg-slate-800 rounded-full h-2">
-            <div id="progressBar" class="progress-bar bg-gradient-to-r from-blue-500 to-violet-500 h-2 rounded-full" style="width:0%"></div>
-          </div>
-        </div>
-        <div id="progressDetail" class="text-xs text-slate-500"></div>
-      </div>
-    </div>
-
-    <!-- Stats Card -->
-    <div id="statsCard" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hidden">
-      <h2 class="font-semibold text-white mb-4">📊 Ringkasan Hasil</h2>
-      <div class="space-y-2.5">
-        <div class="flex justify-between items-center">
-          <span class="text-xs text-slate-400">Total Mentah</span>
-          <span id="statTotal" class="text-sm font-bold text-white">0</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-xs text-slate-400">🥇 Golden</span>
-          <span id="statGolden" class="text-sm font-semibold text-yellow-400">0</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-xs text-slate-400">💰 Buying</span>
-          <span id="statBuying" class="text-sm font-semibold text-green-400">0</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-xs text-slate-400">📝 Longtail</span>
-          <span id="statLongtail" class="text-sm font-semibold text-violet-400">0</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-xs text-slate-400">🏢 Competitor</span>
-          <span id="statCompetitor" class="text-sm font-semibold text-red-400">0</span>
-        </div>
-      </div>
-      <a id="downloadBtn" href="#" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 transition hidden">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        Download Excel
-      </a>
-    </div>
-
-    <!-- Golden Keywords Card -->
-    <div id="goldenCard" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hidden">
-      <h2 class="font-semibold text-white mb-3">🥇 Golden Keywords</h2>
-      <ul id="goldenList" class="space-y-1.5"></ul>
-    </div>
-
-    <!-- File Manager -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-semibold text-white text-sm">📁 File Output</h2>
-        <button onclick="loadFiles()" class="text-xs text-blue-400 hover:text-blue-300 transition">Refresh</button>
-      </div>
-      <div id="fileList" class="space-y-2 text-xs text-slate-500">Memuat...</div>
-    </div>
-  </div>
-
-  <!-- RIGHT PANEL: Log -->
-  <div class="lg:col-span-2">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl h-full flex flex-col" style="min-height:600px">
-      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+<!doctype html>
+<html lang="id" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Suggestion Seed Scraper</title>
+    <script src="/tailwind.min.js"></script>
+    <script>tailwind.config={darkMode:'class'}</script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+      body { font-family: "Inter", system-ui, -apple-system, sans-serif; transition: background .3s, color .3s; }
+      #logBox { font-family: "JetBrains Mono", Consolas, monospace; }
+      .log-line { animation: fadeIn 0.2s ease; }
+      @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; } }
+      .pulse-dot { animation: pulse 1.4s infinite; }
+      @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+      .progress-bar { transition: width 0.4s ease; }
+      .dark ::-webkit-scrollbar { width:6px; }
+      .dark ::-webkit-scrollbar-track { background:#1e293b; }
+      .dark ::-webkit-scrollbar-thumb { background:#475569; border-radius:3px; }
+      ::-webkit-scrollbar { width:6px; }
+      ::-webkit-scrollbar-track { background:#e2e8f0; }
+      ::-webkit-scrollbar-thumb { background:#94a3b8; border-radius:3px; }
+      /* Card transitions */
+      .t-card { transition: background .3s, border-color .3s, box-shadow .3s; }
+      .t-text { transition: color .3s; }
+    </style>
+  </head>
+  <body class="bg-slate-950 dark:bg-slate-950 text-slate-100 min-h-screen">
+    <!-- HEADER -->
+    <header
+      class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-10"
+    >
+      <div
+        class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between"
+      >
         <div class="flex items-center gap-3">
-          <div class="flex gap-1.5">
-            <div class="w-3 h-3 rounded-full bg-red-500/70"></div>
-            <div class="w-3 h-3 rounded-full bg-yellow-500/70"></div>
-            <div class="w-3 h-3 rounded-full bg-green-500/70"></div>
+          <div
+            class="w-8 h-8 bg-gradient-to-br from-blue-500 to-violet-600 rounded-lg flex items-center justify-center text-sm font-bold"
+          >
+            K
           </div>
-          <span class="text-sm text-slate-400 font-medium">Live Log</span>
+          <div>
+            <h1 class="font-semibold text-white text-sm">
+              Google Suggestion Seed Scraper
+            </h1>
+            <p class="text-xs text-slate-500">
+              Keyword Research Automation Tool
+            </p>
+          </div>
         </div>
-        <button onclick="clearLog()" class="text-xs text-slate-500 hover:text-slate-300 transition">Clear</button>
+        <div class="flex items-center gap-3">
+          <button id="themeToggle" onclick="toggleTheme()" class="w-8 h-8 rounded-lg bg-slate-800 dark:bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition" title="Toggle Dark/Light Mode">
+            <svg id="iconSun" class="w-4 h-4 text-yellow-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            <svg id="iconMoon" class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          </button>
+          <div
+            id="statusBadge"
+            class="px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400"
+          >
+            Idle
+          </div>
+        </div>
       </div>
-      <div id="logBox" class="flex-1 overflow-y-auto p-5 space-y-1 text-xs leading-relaxed">
-        <p class="text-slate-600">Menunggu input kata kunci...</p>
+    </header>
+
+    <!-- TAB NAV -->
+    <div class="max-w-7xl mx-auto px-6 pt-6">
+      <div
+        class="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit"
+      >
+        <button
+          id="tabScrape"
+          onclick="switchTab('scrape')"
+          class="tab-btn px-5 py-2 rounded-lg text-sm font-medium transition bg-slate-700 text-white"
+        >
+          🤖 Scraping
+        </button>
+        <button
+          id="tabClassify"
+          onclick="switchTab('classify')"
+          class="tab-btn px-5 py-2 rounded-lg text-sm font-medium transition text-slate-400 hover:text-white"
+        >
+          📂 Klasifikasi Excel
+        </button>
       </div>
     </div>
-  </div>
 
-</main>
+    <main
+      id="paneScrape"
+      class="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6"
+    >
+      <!-- LEFT PANEL -->
+      <div class="lg:col-span-1 flex flex-col gap-5">
+        <!-- Input Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <h2 class="font-semibold text-white mb-4 flex items-center gap-2">
+            <svg
+              class="w-4 h-4 text-blue-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+              />
+            </svg>
+            Pengaturan Scraping
+          </h2>
 
-<script>
-// ─── STATE ───
-let sessionId = null;
-let eventSource = null;
-let isRunning = false;
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1.5"
+                >Kata Kunci Target</label
+              >
+              <input
+                id="keyword"
+                type="text"
+                placeholder="contoh: jasa desain logo"
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+              />
+            </div>
 
-// ─── DOM ───
-const btnStart     = document.getElementById('btnStart');
-const btnCancel    = document.getElementById('btnCancel');
-const keywordInput = document.getElementById('keyword');
-const showBrowser  = document.getElementById('showBrowser');
-const logBox       = document.getElementById('logBox');
-const statusBadge  = document.getElementById('statusBadge');
-const progressCard = document.getElementById('progressCard');
-const statsCard    = document.getElementById('statsCard');
-const goldenCard   = document.getElementById('goldenCard');
+            <div
+              class="flex items-center justify-between bg-slate-800 rounded-lg px-4 py-3"
+            >
+              <div>
+                <p class="text-sm text-white font-medium">Mode Browser</p>
+                <p class="text-xs text-slate-500">Tampilkan jendela browser</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="showBrowser" class="sr-only peer" />
+                <div
+                  class="w-10 h-5 bg-slate-700 peer-checked:bg-blue-600 rounded-full transition peer-focus:ring-2 peer-focus:ring-blue-500/30"
+                ></div>
+                <div
+                  class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition peer-checked:translate-x-5"
+                ></div>
+              </label>
+            </div>
 
-// ─── SEED CONFIG ───
-const SYMBOLS = '!@#$%^&*-+';
+            <!-- Seed Options -->
+            <div class="bg-slate-800 rounded-lg px-4 py-3 space-y-3">
+              <p class="text-sm text-white font-medium">Pengaturan Seed</p>
+              <!-- Prefix / Suffix toggle -->
+              <div class="space-y-2">
+                <p class="text-xs text-slate-400 uppercase tracking-wide">
+                  Arah Seeding
+                </p>
+                <div class="space-y-2">
+                  <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="seedPrefix" checked class="w-3.5 h-3.5 accent-blue-500" />
+                    <span class="text-xs text-slate-300">Depan (a keyword)</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="seedMiddle" checked class="w-3.5 h-3.5 accent-blue-500" />
+                    <span class="text-xs text-slate-300">Tengah (kata a kunci)</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="seedSuffix" checked class="w-3.5 h-3.5 accent-blue-500" />
+                    <span class="text-xs text-slate-300">Belakang (keyword a)</span>
+                  </label>
+                </div>
+              </div>
 
-function getSeedConfig() {
-  const useAlpha  = document.getElementById('useAlpha').checked;
-  const useNumber = document.getElementById('useNumber').checked;
-  const useSymbol = document.getElementById('useSymbol').checked;
-  const prefix    = document.getElementById('seedPrefix').checked;
-  const suffix    = document.getElementById('seedSuffix').checked;
+              <!-- Karakter toggle -->
+              <div class="space-y-2">
+                <p class="text-xs text-slate-400 uppercase tracking-wide">
+                  Karakter Seed
+                </p>
+                <div class="grid grid-cols-3 gap-2">
+                  <label
+                    class="flex items-center gap-2 cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      id="useAlpha"
+                      checked
+                      class="w-3.5 h-3.5 accent-violet-500"
+                    />
+                    <span class="text-xs text-slate-300">A – Z</span>
+                  </label>
+                  <label
+                    class="flex items-center gap-2 cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      id="useNumber"
+                      checked
+                      class="w-3.5 h-3.5 accent-violet-500"
+                    />
+                    <span class="text-xs text-slate-300">0 – 9</span>
+                  </label>
+                  <label
+                    class="flex items-center gap-2 cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      id="useSymbol"
+                      class="w-3.5 h-3.5 accent-violet-500"
+                    />
+                    <span class="text-xs text-slate-300">Simbol</span>
+                  </label>
+                </div>
+              </div>
 
-  let chars = '';
-  if (useAlpha)  chars += 'abcdefghijklmnopqrstuvwxyz';
-  if (useNumber) chars += '0123456789';
-  if (useSymbol) chars += SYMBOLS;
+              <!-- Kategori Sortir -->
+              <div class="space-y-2">
+                <p class="text-xs text-slate-400 uppercase tracking-wide border-t border-slate-700 pt-3">
+                  Kategori Sortir
+                </p>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="sortGolden" checked class="w-3.5 h-3.5 accent-emerald-500"/>
+                    <span class="text-xs text-slate-300">Golden</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="sortBuying" checked class="w-3.5 h-3.5 accent-red-500"/>
+                    <span class="text-xs text-slate-300">Buying</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="sortLongtail" checked class="w-3.5 h-3.5 accent-purple-500"/>
+                    <span class="text-xs text-slate-300">Longtail</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="sortCompetitor" checked class="w-3.5 h-3.5 accent-amber-500"/>
+                    <span class="text-xs text-slate-300">Competitor</span>
+                  </label>
+                </div>
+              </div>
 
-  return { chars, prefix, suffix };
-}
+              <!-- Estimasi -->
+              <div
+                class="text-[11px] text-slate-500 pt-1 border-t border-slate-700"
+                id="seedEstimate"
+              >
+                Estimasi:
+                <span class="text-slate-300 font-medium" id="seedCount"
+                  >72</span
+                >
+                pencarian
+              </div>
+            </div>
 
-function updateEstimate() {
-  const { chars, prefix, suffix } = getSeedConfig();
-  const directions = (prefix ? 1 : 0) + (suffix ? 1 : 0);
-  const total = chars.length * directions;
-  document.getElementById('seedCount').textContent = total;
-}
+            <!-- Warna Excel -->
+            <div class="bg-slate-800 rounded-lg px-4 py-3 space-y-3">
+              <p class="text-sm text-white font-medium">Warna Excel</p>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-slate-400">Header Kolom</span>
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="color"
+                      id="colorHeader"
+                      value="#1E40AF"
+                      class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent"
+                    />
+                    <span
+                      class="text-xs text-slate-500 w-16"
+                      id="colorHeaderHex"
+                      >#1E40AF</span
+                    >
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-slate-400">Blok Golden</span>
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="color"
+                      id="colorGolden"
+                      value="#15803D"
+                      class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent"
+                    />
+                    <span
+                      class="text-xs text-slate-500 w-16"
+                      id="colorGoldenHex"
+                      >#15803D</span
+                    >
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-slate-400">Separator A-Z</span>
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="color"
+                      id="colorSeparator"
+                      value="#FBBF24"
+                      class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent"
+                    />
+                    <span
+                      class="text-xs text-slate-500 w-16"
+                      id="colorSeparatorHex"
+                      >#FBBF24</span
+                    >
+                  </div>
+                </div>
 
-// Update estimasi saat toggle berubah
-['useAlpha','useNumber','useSymbol','seedPrefix','seedSuffix'].forEach(id => {
-  document.getElementById(id).addEventListener('change', updateEstimate);
-});
-updateEstimate();
+                <p class="text-xs text-slate-400 uppercase tracking-wide pt-2 border-t border-slate-700">Warna Sel Keyword</p>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-slate-400">Golden Cell</span>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="colorGoldenCell" value="#86EFAC" class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent" />
+                    <span class="text-xs text-slate-500 w-16" id="colorGoldenCellHex">#86EFAC</span>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-slate-400">Buying Cell</span>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="colorBuyingCell" value="#FCA5A5" class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent" />
+                    <span class="text-xs text-slate-500 w-16" id="colorBuyingCellHex">#FCA5A5</span>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-slate-400">Longtail Cell</span>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="colorLongtailCell" value="#C4B5FD" class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent" />
+                    <span class="text-xs text-slate-500 w-16" id="colorLongtailCellHex">#C4B5FD</span>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-slate-400">Competitor Cell</span>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="colorCompetitorCell" value="#FDE68A" class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent" />
+                    <span class="text-xs text-slate-500 w-16" id="colorCompetitorCellHex">#FDE68A</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onclick="resetColors()"
+                class="text-xs text-slate-500 hover:text-slate-300 transition"
+              >
+                ↺ Reset ke default
+              </button>
+            </div>
 
-// ─── LOG HELPERS ───
-function appendLog(message, type = 'info') {
-  const colors = {
-    info:    'text-slate-300',
-    success: 'text-green-400',
-    warn:    'text-yellow-400',
-    error:   'text-red-400',
-    dim:     'text-slate-600',
-    header:  'text-blue-400 font-semibold',
-  };
+            <button
+              id="btnStart"
+              class="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Mulai Scraping
+            </button>
 
-  // Auto-detect type dari isi pesan
-  if (message.startsWith('✅') || message.startsWith('🎉')) type = 'success';
-  else if (message.startsWith('⚠️')) type = 'warn';
-  else if (message.startsWith('❌')) type = 'error';
-  else if (message.startsWith('═') || message.startsWith('─')) type = 'dim';
-  else if (message.startsWith('📌') || message.startsWith('📊') || message.startsWith('🔍')) type = 'header';
+            <button
+              id="btnCancel"
+              class="w-full hidden bg-red-600/20 hover:bg-red-600/40 border border-red-500/50 text-red-400 font-semibold py-3 rounded-xl transition items-center justify-center gap-2 text-sm"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              Stop / Cancel
+            </button>
+          </div>
+        </div>
 
-  const line = document.createElement('div');
-  line.className = `log-line ${colors[type] || colors.info}`;
-  line.textContent = message;
-  logBox.appendChild(line);
-  logBox.scrollTop = logBox.scrollHeight;
-}
+        <!-- Progress Card -->
+        <div
+          id="progressCard"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hidden"
+        >
+          <h2 class="font-semibold text-white mb-4 flex items-center gap-2">
+            <span
+              class="pulse-dot w-2 h-2 bg-green-400 rounded-full inline-block"
+            ></span>
+            Progress
+          </h2>
+          <div class="space-y-3">
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-400" id="progressLabel"
+                  >Inisialisasi...</span
+                >
+                <span class="text-white font-medium" id="progressPct">0%</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-2">
+                <div
+                  id="progressBar"
+                  class="progress-bar bg-gradient-to-r from-blue-500 to-violet-500 h-2 rounded-full"
+                  style="width: 0%"
+                ></div>
+              </div>
+            </div>
+            <div id="progressDetail" class="text-xs text-slate-500"></div>
+          </div>
+        </div>
 
-function clearLog() {
-  logBox.innerHTML = '';
-}
+        <!-- Stats Card -->
+        <div
+          id="statsCard"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hidden"
+        >
+          <h2 class="font-semibold text-white mb-4">📊 Ringkasan Hasil</h2>
+          <div class="space-y-2.5">
+            <div class="flex justify-between items-center">
+              <span class="text-xs text-slate-400">Total Mentah</span>
+              <span id="statTotal" class="text-sm font-bold text-white">0</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs text-slate-400">🥇 Golden</span>
+              <span
+                id="statGolden"
+                class="text-sm font-semibold text-yellow-400"
+                >0</span
+              >
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs text-slate-400">💰 Buying</span>
+              <span id="statBuying" class="text-sm font-semibold text-green-400"
+                >0</span
+              >
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs text-slate-400">📝 Longtail</span>
+              <span
+                id="statLongtail"
+                class="text-sm font-semibold text-violet-400"
+                >0</span
+              >
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs text-slate-400">🏢 Competitor</span>
+              <span
+                id="statCompetitor"
+                class="text-sm font-semibold text-red-400"
+                >0</span
+              >
+            </div>
+          </div>
+          <a
+            id="downloadBtn"
+            href="#"
+            class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 transition hidden"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Download Excel
+          </a>
+          <a
+            id="txtBtn"
+            href="#"
+            class="w-full bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 transition hidden"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Salin ke Notepad (.txt)
+          </a>
+        </div>
 
-// ─── STATUS ───
-function setStatus(status) {
-  const map = {
-    idle:    { text: 'Idle',      cls: 'bg-slate-800 text-slate-400' },
-    running: { text: 'Running ●', cls: 'bg-emerald-900/50 text-emerald-400' },
-    done:    { text: 'Done ✓',    cls: 'bg-blue-900/50 text-blue-400' },
-    error:   { text: 'Error ✗',   cls: 'bg-red-900/50 text-red-400' },
-  };
-  const s = map[status] || map.idle;
-  statusBadge.textContent = s.text;
-  statusBadge.className = `px-3 py-1 rounded-full text-xs font-medium ${s.cls}`;
-}
+        <!-- Golden Keywords Card -->
+        <div
+          id="goldenCard"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 hidden"
+        >
+          <h2 class="font-semibold text-white mb-3">🥇 Golden Keywords</h2>
+          <ul id="goldenList" class="space-y-1.5"></ul>
+        </div>
 
-// ─── PROGRESS ───
-function updateProgress(label, pct, detail = '') {
-  progressCard.classList.remove('hidden');
-  document.getElementById('progressLabel').textContent = label;
-  document.getElementById('progressPct').textContent = pct + '%';
-  document.getElementById('progressBar').style.width = pct + '%';
-  if (detail) document.getElementById('progressDetail').textContent = detail;
-}
+        <!-- File Manager -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold text-white text-sm">📁 File Output</h2>
+            <button
+              onclick="loadFiles()"
+              class="text-xs text-blue-400 hover:text-blue-300 transition"
+            >
+              Refresh
+            </button>
+          </div>
+          <div id="fileList" class="space-y-2 text-xs text-slate-500">
+            Memuat...
+          </div>
+        </div>
+      </div>
 
-// ─── CANCEL ───
-async function cancelScraping() {
-  if (!sessionId || !isRunning) return;
-  btnCancel.disabled = true;
-  btnCancel.innerHTML = `<span class="pulse-dot w-2 h-2 bg-red-400 rounded-full inline-block"></span> Menghentikan...`;
-  try {
-    await fetch(`/api/cancel/${sessionId}`, { method: 'POST' });
-    appendLog('🛑 Permintaan cancel dikirim, menunggu proses berhenti...', 'warn');
-  } catch (err) {
-    appendLog('⚠️ Gagal mengirim cancel: ' + err.message, 'warn');
-  }
-}
+      <!-- RIGHT PANEL: Log -->
+      <div class="lg:col-span-2">
+        <div
+          class="bg-slate-900 border border-slate-800 rounded-2xl h-full flex flex-col"
+          style="min-height: 600px"
+        >
+          <div
+            class="flex items-center justify-between px-5 py-4 border-b border-slate-800"
+          >
+            <div class="flex items-center gap-3">
+              <div class="flex gap-1.5">
+                <div class="w-3 h-3 rounded-full bg-red-500/70"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-500/70"></div>
+                <div class="w-3 h-3 rounded-full bg-green-500/70"></div>
+              </div>
+              <span class="text-sm text-slate-400 font-medium">Live Log</span>
+            </div>
+            <button
+              onclick="clearLog()"
+              class="text-xs text-slate-500 hover:text-slate-300 transition"
+            >
+              Clear
+            </button>
+          </div>
+          <div
+            id="logBox"
+            class="flex-1 overflow-y-auto p-5 space-y-1 text-xs leading-relaxed"
+          >
+            <p class="text-slate-600">Menunggu input kata kunci...</p>
+          </div>
+        </div>
+      </div>
+    </main>
 
-// ─── START ───
-async function startScraping() {
-  const keyword = keywordInput.value.trim();
-  if (!keyword) {
-    keywordInput.focus();
-    keywordInput.classList.add('border-red-500');
-    setTimeout(() => keywordInput.classList.remove('border-red-500'), 1500);
-    return;
-  }
+    <!-- ══════════════════════════════════════════ -->
+    <!-- TAB: KLASIFIKASI EXCEL                      -->
+    <!-- ══════════════════════════════════════════ -->
+    <div id="paneClassify" class="hidden max-w-4xl mx-auto px-6 py-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Upload Card -->
+        <div
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col gap-5"
+        >
+          <h2 class="font-semibold text-white flex items-center gap-2">
+            <svg
+              class="w-4 h-4 text-violet-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+              />
+            </svg>
+            Upload File Excel
+          </h2>
 
-  // Generate session ID
-  sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2,6)}`;
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Upload file
+            <code class="bg-slate-800 px-1 rounded">.xlsx</code> berisi daftar
+            keyword (belum dikategorikan). Sistem akan membaca semua kolom dan
+            baris, lalu mengklasifikasikan ke Buying, Longtail, dan Competitor.
+          </p>
 
-  // Subscribe SSE dulu sebelum POST
-  connectSSE(sessionId);
+          <!-- Drop Zone -->
+          <label
+            id="dropZone"
+            class="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-700 hover:border-violet-500 rounded-xl p-8 cursor-pointer transition group"
+          >
+            <input
+              type="file"
+              id="uploadInput"
+              accept=".xlsx,.xls"
+              class="hidden"
+            />
+            <svg
+              class="w-8 h-8 text-slate-600 group-hover:text-violet-400 transition"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <div class="text-center">
+              <p
+                id="dropLabel"
+                class="text-sm text-slate-400 group-hover:text-slate-200 transition"
+              >
+                Klik atau drag & drop file di sini
+              </p>
+              <p class="text-xs text-slate-600 mt-1">
+                .xlsx / .xls — maks 20MB
+              </p>
+            </div>
+          </label>
 
-  // Set UI state
-  isRunning = true;
-  btnStart.disabled = true;
-  btnStart.innerHTML = `<span class="pulse-dot w-2 h-2 bg-white rounded-full inline-block"></span> Sedang Berjalan...`;
-  btnCancel.classList.remove('hidden');
-  statsCard.classList.add('hidden');
-  goldenCard.classList.add('hidden');
-  document.getElementById('downloadBtn').classList.add('hidden');
-  clearLog();
-  setStatus('running');
+          <!-- File info -->
+          <div
+            id="fileInfo"
+            class="hidden bg-slate-800 rounded-lg px-4 py-3 flex items-center gap-3"
+          >
+            <svg
+              class="w-5 h-5 text-emerald-400 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <div class="min-w-0">
+              <p id="fileName" class="text-sm text-white truncate"></p>
+              <p id="fileSize" class="text-xs text-slate-500"></p>
+            </div>
+            <button
+              onclick="clearUpload()"
+              class="ml-auto text-slate-500 hover:text-red-400 transition"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
 
-  const seedConfig = getSeedConfig();
-  if (!seedConfig.chars) {
-    appendLog('⚠️ Pilih minimal satu jenis karakter seed (A-Z / 0-9 / Simbol).', 'warn');
-    resetUI(); setStatus('idle'); return;
-  }
-  if (!seedConfig.prefix && !seedConfig.suffix) {
-    appendLog('⚠️ Pilih minimal satu arah seeding (Depan / Belakang).', 'warn');
-    resetUI(); setStatus('idle'); return;
-  }
+          <button
+            id="btnClassify"
+            class="w-full bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"
+              />
+            </svg>
+            Klasifikasi Sekarang
+          </button>
+        </div>
 
-  try {
-    const res = await fetch('/api/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        keyword,
-        headless: !showBrowser.checked,
-        sessionId,
-        seedConfig,
-      }),
-    });
+        <!-- Result Card -->
+        <div
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col gap-5"
+        >
+          <h2 class="font-semibold text-white flex items-center gap-2">
+            <svg
+              class="w-4 h-4 text-emerald-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              />
+            </svg>
+            Hasil Klasifikasi
+          </h2>
 
-    const data = await res.json();
-    if (!data.success) {
-      appendLog('❌ Gagal memulai: ' + data.error, 'error');
-      resetUI();
-    }
-  } catch (err) {
-    appendLog('❌ Koneksi ke server gagal: ' + err.message, 'error');
-    resetUI();
-  }
-}
+          <!-- Idle state -->
+          <div
+            id="classifyIdle"
+            class="flex-1 flex flex-col items-center justify-center gap-2 py-10 text-center"
+          >
+            <svg
+              class="w-10 h-10 text-slate-700"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1"
+                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <p class="text-slate-600 text-sm">
+              Upload file lalu klik Klasifikasi
+            </p>
+          </div>
 
-// ─── SSE ───
-function connectSSE(sid) {
-  if (eventSource) eventSource.close();
+          <!-- Loading state -->
+          <div
+            id="classifyLoading"
+            class="hidden flex-1 flex flex-col items-center justify-center gap-3 py-10"
+          >
+            <div
+              class="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"
+            ></div>
+            <p class="text-slate-400 text-sm">Memproses file...</p>
+          </div>
 
-  eventSource = new EventSource(`/api/stream/${sid}`);
+          <!-- Stats -->
+          <div id="classifyResult" class="hidden space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-slate-800 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold text-white" id="cTotal">0</p>
+                <p class="text-xs text-slate-400 mt-1">Total Keyword</p>
+              </div>
+              <div
+                class="bg-red-950/40 border border-red-900/30 rounded-xl p-4 text-center"
+              >
+                <p class="text-2xl font-bold text-red-400" id="cBuying">0</p>
+                <p class="text-xs text-slate-400 mt-1">💰 Buying</p>
+              </div>
+              <div
+                class="bg-violet-950/40 border border-violet-900/30 rounded-xl p-4 text-center"
+              >
+                <p class="text-2xl font-bold text-violet-400" id="cLongtail">
+                  0
+                </p>
+                <p class="text-xs text-slate-400 mt-1">📝 Longtail</p>
+              </div>
+              <div
+                class="bg-yellow-950/40 border border-yellow-900/30 rounded-xl p-4 text-center"
+              >
+                <p class="text-2xl font-bold text-yellow-400" id="cCompetitor">
+                  0
+                </p>
+                <p class="text-xs text-slate-400 mt-1">🏢 Competitor</p>
+              </div>
+            </div>
 
-  eventSource.addEventListener('connected', () => {
-    appendLog('🔗 Terhubung ke server...', 'dim');
-  });
+            <a
+              id="classifyDownload"
+              href="#"
+              class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              Download Hasil
+            </a>
+            <p
+              id="classifyFilename"
+              class="text-[11px] text-slate-600 text-center truncate"
+            ></p>
+          </div>
 
-  eventSource.addEventListener('log', (e) => {
-    const { message } = JSON.parse(e.data);
-    appendLog(message);
-  });
+          <!-- Error -->
+          <div
+            id="classifyError"
+            class="hidden bg-red-950/40 border border-red-800/40 rounded-xl p-4"
+          >
+            <p class="text-red-400 text-sm" id="classifyErrorMsg"></p>
+          </div>
+        </div>
+      </div>
+    </div>
 
-  eventSource.addEventListener('progress', (e) => {
-    const d = JSON.parse(e.data);
-    handleProgress(d);
-  });
+    <!-- CUSTOM ALERT / CONFIRM MODAL -->
+    <div id="customModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+      <div id="customModalOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity opacity-0 duration-200"></div>
+      <div id="customModalContent" class="relative bg-slate-900 border border-slate-700 rounded-2xl shadow-xl p-6 w-full max-w-sm transform scale-95 opacity-0 transition-all duration-200">
+        <div class="mb-5 flex items-start gap-4">
+          <div id="customModalIcon" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+          </div>
+          <div class="flex-1 mt-0.5">
+            <h3 id="customModalTitle" class="text-white font-semibold text-base mb-1">Alert</h3>
+            <p id="customModalMessage" class="text-slate-400 text-sm leading-relaxed"></p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3" id="customModalActions">
+          <button id="customModalCancel" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition">Batal</button>
+          <button id="customModalConfirm" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition">OK</button>
+        </div>
+      </div>
+    </div>
 
-  eventSource.addEventListener('cancelled', (e) => {
-    const d = JSON.parse(e.data);
-    appendLog('🛑 ' + d.message, 'warn');
-    setStatus('idle');
-    resetUI();
-    document.getElementById('progressLabel').textContent = 'Dihentikan';
-  });
+    <script>
+      // ─── CUSTOM MODAL ───
+      function showCustomModal(options) {
+        return new Promise((resolve) => {
+          const modal = document.getElementById("customModal");
+          const overlay = document.getElementById("customModalOverlay");
+          const content = document.getElementById("customModalContent");
+          
+          document.getElementById("customModalTitle").textContent = options.title || "Alert";
+          document.getElementById("customModalMessage").textContent = options.message || "";
+          
+          const iconContainer = document.getElementById("customModalIcon");
+          if (options.type === "danger") {
+            iconContainer.className = "w-10 h-10 rounded-full bg-red-900/30 text-red-400 flex items-center justify-center flex-shrink-0";
+            iconContainer.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
+            document.getElementById("customModalConfirm").className = "px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition";
+          } else if (options.type === "warning") {
+            iconContainer.className = "w-10 h-10 rounded-full bg-yellow-900/30 text-yellow-400 flex items-center justify-center flex-shrink-0";
+            iconContainer.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
+            document.getElementById("customModalConfirm").className = "px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition";
+          } else {
+            iconContainer.className = "w-10 h-10 rounded-full bg-blue-900/30 text-blue-400 flex items-center justify-center flex-shrink-0";
+            iconContainer.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+            document.getElementById("customModalConfirm").className = "px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition";
+          }
+          
+          if (options.isConfirm) {
+            document.getElementById("customModalCancel").classList.remove("hidden");
+            document.getElementById("customModalCancel").textContent = options.cancelText || "Batal";
+            document.getElementById("customModalConfirm").textContent = options.confirmText || "Ya";
+          } else {
+            document.getElementById("customModalCancel").classList.add("hidden");
+            document.getElementById("customModalConfirm").textContent = options.confirmText || "OK";
+          }
 
-  eventSource.addEventListener('done', (e) => {
-    const d = JSON.parse(e.data);
-    handleDone(d);
-  });
+          modal.classList.remove("hidden");
+          // trigger reflow
+          void modal.offsetWidth;
+          overlay.classList.remove("opacity-0");
+          content.classList.remove("opacity-0", "scale-95");
 
-  eventSource.addEventListener('error', (e) => {
-    try {
-      const d = JSON.parse(e.data);
-      appendLog('❌ Error: ' + d.message, 'error');
-    } catch {}
-    resetUI();
-    setStatus('error');
-  });
+          function close() {
+            overlay.classList.add("opacity-0");
+            content.classList.add("opacity-0", "scale-95");
+            setTimeout(() => modal.classList.add("hidden"), 200);
+          }
 
-  eventSource.onerror = () => {
-    if (isRunning) appendLog('⚠️ Koneksi SSE terputus, menunggu reconect...', 'warn');
-  };
-}
+          document.getElementById("customModalConfirm").onclick = () => {
+            close();
+            resolve(true);
+          };
+          document.getElementById("customModalCancel").onclick = () => {
+            close();
+            resolve(false);
+          };
+        });
+      }
+      // ─── THEME TOGGLE ───
+      function toggleTheme() {
+        const html = document.documentElement;
+        const isDark = html.classList.contains("dark");
+        if (isDark) {
+          html.classList.remove("dark");
+          localStorage.setItem("theme", "light");
+        } else {
+          html.classList.add("dark");
+          localStorage.setItem("theme", "dark");
+        }
+        applyTheme();
+      }
 
-function handleProgress(d) {
-  if (d.stage === 'golden_done') {
-    updateProgress('Golden Keywords ditemukan', 5);
-    showGoldenKeywords(d.goldenKeywords);
-  } else if (d.stage === 'processing_golden') {
-    const pct = Math.round((d.current / d.total) * 80) + 5;
-    updateProgress(`Memproses: "${d.keyword}"`, pct, `Golden ${d.current} dari ${d.total}`);
-  } else if (d.stage === 'prefix') {
-    // per-char progress already shown in log
-  } else if (d.stage === 'scraping_done') {
-    updateProgress('Scraping selesai, membuat Excel...', 95);
-  }
-}
+      function applyTheme() {
+        const isDark = document.documentElement.classList.contains("dark");
+        const body = document.body;
+        body.className = isDark
+          ? "bg-slate-950 text-slate-100 min-h-screen"
+          : "bg-gray-50 text-gray-900 min-h-screen";
+        // Icons
+        document.getElementById("iconSun").classList.toggle("hidden", isDark);
+        document.getElementById("iconMoon").classList.toggle("hidden", !isDark);
+        // Header
+        const header = document.querySelector("header");
+        header.className = isDark
+          ? "border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-10"
+          : "border-b border-gray-200 bg-white/80 backdrop-blur sticky top-0 z-10 shadow-sm";
+        // Theme toggle btn
+        document.getElementById("themeToggle").className = isDark
+          ? "w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition"
+          : "w-8 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition";
+      }
 
-function showGoldenKeywords(keywords) {
-  goldenCard.classList.remove('hidden');
-  const list = document.getElementById('goldenList');
-  list.innerHTML = '';
-  keywords.forEach((kw, i) => {
-    const li = document.createElement('li');
-    li.className = 'flex items-center gap-2 text-xs';
-    li.innerHTML = `<span class="w-5 h-5 rounded-full bg-yellow-500/20 text-yellow-400 flex items-center justify-center text-[10px] font-bold flex-shrink-0">${i+1}</span><span class="text-slate-300">${kw}</span>`;
-    list.appendChild(li);
-  });
-}
+      // Init theme from localStorage
+      (function() {
+        const saved = localStorage.getItem("theme");
+        if (saved === "light") {
+          document.documentElement.classList.remove("dark");
+        }
+        applyTheme();
+      })();
 
-function handleDone(d) {
-  isRunning = false;
-  updateProgress('Selesai!', 100);
+      // ─── TAB SWITCHING ───
+      function switchTab(tab) {
+        const isScrape = tab === "scrape";
+        document
+          .getElementById("paneScrape")
+          .classList.toggle("hidden", !isScrape);
+        document
+          .getElementById("paneClassify")
+          .classList.toggle("hidden", isScrape);
+        document.getElementById("tabScrape").className =
+          `tab-btn px-5 py-2 rounded-lg text-sm font-medium transition ${isScrape ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`;
+        document.getElementById("tabClassify").className =
+          `tab-btn px-5 py-2 rounded-lg text-sm font-medium transition ${!isScrape ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`;
+      }
 
-  // Stats
-  statsCard.classList.remove('hidden');
-  document.getElementById('statTotal').textContent     = d.summary.total.toLocaleString();
-  document.getElementById('statGolden').textContent    = d.summary.golden;
-  document.getElementById('statBuying').textContent    = d.summary.buying.toLocaleString();
-  document.getElementById('statLongtail').textContent  = d.summary.longtail.toLocaleString();
-  document.getElementById('statCompetitor').textContent= d.summary.competitor.toLocaleString();
+      // ─── UPLOAD / CLASSIFY ───
+      let uploadFile = null;
 
-  // Download button
-  const dlBtn = document.getElementById('downloadBtn');
-  dlBtn.href = d.downloadUrl;
-  dlBtn.classList.remove('hidden');
+      const dropZone = document.getElementById("dropZone");
+      const uploadInput = document.getElementById("uploadInput");
 
-  setStatus('done');
-  resetBtn();
-  loadFiles();
+      dropZone.addEventListener("click", () => uploadInput.click());
 
-  // Final log
-  appendLog('');
-  appendLog('═══════════════════════════════', 'dim');
-  appendLog('🎉 Proses selesai! File Excel siap didownload.', 'success');
-}
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("border-violet-500");
+      });
+      dropZone.addEventListener("dragleave", () =>
+        dropZone.classList.remove("border-violet-500"),
+      );
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("border-violet-500");
+        const file = e.dataTransfer.files[0];
+        if (file) setUploadFile(file);
+      });
 
-function resetUI() {
-  isRunning = false;
-  btnCancel.classList.add('hidden');
-  btnCancel.disabled = false;
-  btnCancel.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Stop / Cancel`;
-  resetBtn();
-  if (eventSource) { eventSource.close(); eventSource = null; }
-}
+      uploadInput.addEventListener("change", () => {
+        if (uploadInput.files[0]) setUploadFile(uploadInput.files[0]);
+      });
 
-function resetBtn() {
-  btnStart.disabled = false;
-  btnStart.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Mulai Scraping`;
-}
+      function setUploadFile(file) {
+        uploadFile = file;
+        document.getElementById("fileInfo").classList.remove("hidden");
+        document.getElementById("fileName").textContent = file.name;
+        document.getElementById("fileSize").textContent =
+          (file.size / 1024).toFixed(1) + " KB";
+        document.getElementById("dropLabel").textContent = "File dipilih ✓";
+        // Reset result
+        document.getElementById("classifyResult").classList.add("hidden");
+        document.getElementById("classifyError").classList.add("hidden");
+        document.getElementById("classifyIdle").classList.remove("hidden");
+      }
 
-// ─── FILE MANAGER ───
-async function loadFiles() {
-  const container = document.getElementById('fileList');
-  try {
-    const res = await fetch('/api/files');
-    const { files } = await res.json();
-    if (!files.length) {
-      container.innerHTML = '<p class="text-slate-600">Belum ada file output.</p>';
-      return;
-    }
-    container.innerHTML = '';
-    files.forEach(f => {
-      const size = (f.size / 1024).toFixed(1) + ' KB';
-      const date = new Date(f.created).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
-      const row = document.createElement('div');
-      row.className = 'flex items-center justify-between bg-slate-800 rounded-lg px-3 py-2 gap-2';
-      row.innerHTML = `
+      function clearUpload() {
+        uploadFile = null;
+        uploadInput.value = "";
+        document.getElementById("fileInfo").classList.add("hidden");
+        document.getElementById("dropLabel").textContent =
+          "Klik atau drag & drop file di sini";
+        document.getElementById("classifyResult").classList.add("hidden");
+        document.getElementById("classifyError").classList.add("hidden");
+        document.getElementById("classifyIdle").classList.remove("hidden");
+      }
+
+      async function runClassify() {
+        if (!uploadFile) {
+          await showCustomModal({ title: "Peringatan", message: "Pilih file Excel terlebih dahulu.", type: "warning" });
+          return;
+        }
+
+        const btn = document.getElementById("btnClassify");
+        btn.disabled = true;
+        document.getElementById("classifyIdle").classList.add("hidden");
+        document.getElementById("classifyResult").classList.add("hidden");
+        document.getElementById("classifyError").classList.add("hidden");
+        document.getElementById("classifyLoading").classList.remove("hidden");
+
+        try {
+          const formData = new FormData();
+          formData.append("file", uploadFile);
+          formData.append("colorConfig", JSON.stringify(getColorConfig()));
+          formData.append("sortConfig", JSON.stringify(getSortConfig()));
+
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+
+          document.getElementById("classifyLoading").classList.add("hidden");
+
+          if (!data.success) throw new Error(data.error);
+
+          // Tampilkan stats
+          document.getElementById("cTotal").textContent =
+            data.stats.total.toLocaleString();
+          document.getElementById("cBuying").textContent =
+            data.stats.buying.toLocaleString();
+          document.getElementById("cLongtail").textContent =
+            data.stats.longtail.toLocaleString();
+          document.getElementById("cCompetitor").textContent =
+            data.stats.competitor.toLocaleString();
+          document.getElementById("classifyDownload").href = data.downloadUrl;
+          document.getElementById("classifyFilename").textContent =
+            data.filename;
+          document.getElementById("classifyResult").classList.remove("hidden");
+
+          loadFiles(); // Refresh file manager
+        } catch (err) {
+          document.getElementById("classifyLoading").classList.add("hidden");
+          document.getElementById("classifyErrorMsg").textContent = err.message;
+          document.getElementById("classifyError").classList.remove("hidden");
+          document.getElementById("classifyIdle").classList.remove("hidden");
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      document
+        .getElementById("btnClassify")
+        .addEventListener("click", runClassify);
+
+      // ─── STATE ───
+      let sessionId = null;
+      let eventSource = null;
+      let isRunning = false;
+
+      // ─── DOM ───
+      const btnStart = document.getElementById("btnStart");
+      const btnCancel = document.getElementById("btnCancel");
+      const keywordInput = document.getElementById("keyword");
+      const showBrowser = document.getElementById("showBrowser");
+      const logBox = document.getElementById("logBox");
+      const statusBadge = document.getElementById("statusBadge");
+      const progressCard = document.getElementById("progressCard");
+      const statsCard = document.getElementById("statsCard");
+      const goldenCard = document.getElementById("goldenCard");
+
+      // ─── COLOR CONFIG ───
+      const DEFAULT_COLORS = {
+        columnHeader: "#1E40AF",
+        goldenHeader: "#15803D",
+        separator: "#FBBF24",
+        goldenCell: "#86EFAC",
+        buyingCell: "#FCA5A5",
+        longtailCell: "#C4B5FD",
+        competitorCell: "#FDE68A",
+      };
+
+      function getColorConfig() {
+        return {
+          columnHeader: document.getElementById("colorHeader").value,
+          goldenHeader: document.getElementById("colorGolden").value,
+          separator: document.getElementById("colorSeparator").value,
+          goldenCell: document.getElementById("colorGoldenCell").value,
+          buyingCell: document.getElementById("colorBuyingCell").value,
+          longtailCell: document.getElementById("colorLongtailCell").value,
+          competitorCell: document.getElementById("colorCompetitorCell").value,
+        };
+      }
+
+      function resetColors() {
+        const map = {
+          colorHeader: "columnHeader", colorGolden: "goldenHeader", colorSeparator: "separator",
+          colorGoldenCell: "goldenCell", colorBuyingCell: "buyingCell",
+          colorLongtailCell: "longtailCell", colorCompetitorCell: "competitorCell",
+        };
+        for (const [elId, key] of Object.entries(map)) {
+          document.getElementById(elId).value = DEFAULT_COLORS[key];
+          document.getElementById(elId + "Hex").textContent = DEFAULT_COLORS[key];
+        }
+      }
+
+      // Update hex label saat color berubah
+      ["colorHeader", "colorGolden", "colorSeparator", "colorGoldenCell", "colorBuyingCell", "colorLongtailCell", "colorCompetitorCell"].forEach((id) => {
+        const hexId = id + "Hex";
+        document.getElementById(id).addEventListener("input", (e) => {
+          document.getElementById(hexId).textContent =
+            e.target.value.toUpperCase();
+        });
+      });
+
+      // ─── SEED CONFIG ───
+      const SYMBOLS = "!@#$%^&*-+";
+
+      function getSeedConfig() {
+        const useAlpha = document.getElementById("useAlpha").checked;
+        const useNumber = document.getElementById("useNumber").checked;
+        const useSymbol = document.getElementById("useSymbol").checked;
+        const prefix = document.getElementById("seedPrefix").checked;
+        const middle = document.getElementById("seedMiddle").checked;
+        const suffix = document.getElementById("seedSuffix").checked;
+
+        let chars = "";
+        if (useAlpha) chars += "abcdefghijklmnopqrstuvwxyz";
+        if (useNumber) chars += "0123456789";
+        if (useSymbol) chars += SYMBOLS;
+
+        return { chars, prefix, middle, suffix };
+      }
+
+      function getSortConfig() {
+        return {
+          golden: document.getElementById("sortGolden").checked,
+          buying: document.getElementById("sortBuying").checked,
+          longtail: document.getElementById("sortLongtail").checked,
+          competitor: document.getElementById("sortCompetitor").checked,
+        };
+      }
+
+      function updateEstimate() {
+        const { chars, prefix, middle, suffix } = getSeedConfig();
+        const directions = (prefix ? 1 : 0) + (middle ? 1 : 0) + (suffix ? 1 : 0);
+        const total = chars.length * directions;
+        document.getElementById("seedCount").textContent = total;
+      }
+
+      // Update estimasi saat toggle berubah
+      [
+        "useAlpha",
+        "useNumber",
+        "useSymbol",
+        "seedPrefix",
+        "seedMiddle",
+        "seedSuffix",
+      ].forEach((id) => {
+        document.getElementById(id).addEventListener("change", updateEstimate);
+      });
+      updateEstimate();
+
+      // ─── LOG HELPERS ───
+      function appendLog(message, type = "info") {
+        const colors = {
+          info: "text-slate-300",
+          success: "text-green-400",
+          warn: "text-yellow-400",
+          error: "text-red-400",
+          dim: "text-slate-600",
+          header: "text-blue-400 font-semibold",
+        };
+
+        // Auto-detect type dari isi pesan
+        if (message.startsWith("✅") || message.startsWith("🎉"))
+          type = "success";
+        else if (message.startsWith("⚠️")) type = "warn";
+        else if (message.startsWith("❌")) type = "error";
+        else if (message.startsWith("═") || message.startsWith("─"))
+          type = "dim";
+        else if (
+          message.startsWith("📌") ||
+          message.startsWith("📊") ||
+          message.startsWith("🔍")
+        )
+          type = "header";
+
+        const line = document.createElement("div");
+        line.className = `log-line ${colors[type] || colors.info}`;
+        line.textContent = message;
+        logBox.appendChild(line);
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+
+      function clearLog() {
+        logBox.innerHTML = "";
+      }
+
+      // ─── STATUS ───
+      function setStatus(status) {
+        const map = {
+          idle: { text: "Idle", cls: "bg-slate-800 text-slate-400" },
+          running: {
+            text: "Running ●",
+            cls: "bg-emerald-900/50 text-emerald-400",
+          },
+          done: { text: "Done ✓", cls: "bg-blue-900/50 text-blue-400" },
+          error: { text: "Error ✗", cls: "bg-red-900/50 text-red-400" },
+        };
+        const s = map[status] || map.idle;
+        statusBadge.textContent = s.text;
+        statusBadge.className = `px-3 py-1 rounded-full text-xs font-medium ${s.cls}`;
+      }
+
+      // ─── PROGRESS ───
+      function updateProgress(label, pct, detail = "") {
+        progressCard.classList.remove("hidden");
+        document.getElementById("progressLabel").textContent = label;
+        document.getElementById("progressPct").textContent = pct + "%";
+        document.getElementById("progressBar").style.width = pct + "%";
+        if (detail)
+          document.getElementById("progressDetail").textContent = detail;
+      }
+
+      // ─── CANCEL ───
+      async function cancelScraping() {
+        if (!sessionId || !isRunning) return;
+        btnCancel.disabled = true;
+        btnCancel.innerHTML = `<span class="pulse-dot w-2 h-2 bg-red-400 rounded-full inline-block"></span> Menghentikan...`;
+        try {
+          await fetch(`/api/cancel/${sessionId}`, { method: "POST" });
+          appendLog(
+            "🛑 Permintaan cancel dikirim, menunggu proses berhenti...",
+            "warn",
+          );
+        } catch (err) {
+          appendLog("⚠️ Gagal mengirim cancel: " + err.message, "warn");
+        }
+      }
+
+      // ─── START ───
+      async function startScraping() {
+        const keyword = keywordInput.value.trim();
+        if (!keyword) {
+          keywordInput.focus();
+          keywordInput.classList.add("border-red-500");
+          setTimeout(
+            () => keywordInput.classList.remove("border-red-500"),
+            1500,
+          );
+          return;
+        }
+
+        // Validasi seed config SEBELUM buka SSE
+        const seedConfig = getSeedConfig();
+        if (!seedConfig.chars) {
+          appendLog(
+            "⚠️ Pilih minimal satu jenis karakter seed (A-Z / 0-9 / Simbol).",
+            "warn",
+          );
+          resetBtn();
+          setStatus("idle");
+          return;
+        }
+        if (!seedConfig.prefix && !seedConfig.middle && !seedConfig.suffix) {
+          appendLog(
+            "⚠️ Pilih minimal satu arah seeding (Depan / Tengah / Belakang).",
+            "warn",
+          );
+          resetBtn();
+          setStatus("idle");
+          return;
+        }
+
+        // Generate session ID
+        sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+        // Subscribe SSE dulu sebelum POST
+        connectSSE(sessionId);
+
+        // Set UI state
+        isRunning = true;
+        btnStart.disabled = true;
+        btnStart.innerHTML = `<span class="pulse-dot w-2 h-2 bg-white rounded-full inline-block"></span> Sedang Berjalan...`;
+        btnCancel.classList.remove("hidden");
+        btnCancel.classList.add("flex");
+        statsCard.classList.add("hidden");
+        goldenCard.classList.add("hidden");
+        document.getElementById("downloadBtn").classList.add("hidden");
+        document.getElementById("txtBtn").classList.add("hidden");
+        clearLog();
+        setStatus("running");
+
+        try {
+          const res = await fetch("/api/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              keyword,
+              headless: !showBrowser.checked,
+              sessionId,
+              seedConfig,
+              sortConfig: getSortConfig(),
+              colorConfig: getColorConfig(),
+            }),
+          });
+
+          const data = await res.json();
+          if (!data.success) {
+            appendLog("❌ Gagal memulai: " + data.error, "error");
+            resetUI();
+          }
+        } catch (err) {
+          appendLog("❌ Koneksi ke server gagal: " + err.message, "error");
+          resetUI();
+        }
+      }
+
+      // ─── SSE ───
+      function connectSSE(sid) {
+        if (eventSource) eventSource.close();
+
+        eventSource = new EventSource(`/api/stream/${sid}`);
+
+        eventSource.addEventListener("connected", () => {
+          appendLog("🔗 Terhubung ke server...", "dim");
+        });
+
+        eventSource.addEventListener("log", (e) => {
+          const { message } = JSON.parse(e.data);
+          appendLog(message);
+        });
+
+        eventSource.addEventListener("progress", (e) => {
+          const d = JSON.parse(e.data);
+          handleProgress(d);
+        });
+
+        eventSource.addEventListener("cancelled", (e) => {
+          const d = JSON.parse(e.data);
+          appendLog("🛑 " + d.message, "warn");
+          setStatus("idle");
+          resetUI();
+          document.getElementById("progressLabel").textContent = "Dihentikan";
+        });
+
+        eventSource.addEventListener("done", (e) => {
+          const d = JSON.parse(e.data);
+          handleDone(d);
+        });
+
+        eventSource.addEventListener("error", (e) => {
+          try {
+            const d = JSON.parse(e.data);
+            appendLog("❌ Error: " + d.message, "error");
+          } catch {}
+          resetUI();
+          setStatus("error");
+        });
+
+        eventSource.onerror = () => {
+          if (isRunning)
+            appendLog("⚠️ Koneksi SSE terputus, menunggu reconect...", "warn");
+        };
+      }
+
+      function handleProgress(d) {
+        const pct = d.overallPct || 0;
+        if (d.stage === "golden_done") {
+          updateProgress("Golden Keywords ditemukan", pct);
+          showGoldenKeywords(d.goldenKeywords);
+        } else if (d.stage === "processing_golden") {
+          updateProgress(
+            `Memproses: "${d.keyword}"`,
+            pct,
+            `Golden ${d.current} dari ${d.total}`,
+          );
+        } else if (d.stage === "prefix") {
+          updateProgress(
+            `Prefix [${d.char}] → "${d.char} ${d.goldenKeyword}"`,
+            pct,
+            `Ditemukan ${d.found} keyword`,
+          );
+        } else if (d.stage === "suffix") {
+          updateProgress(
+            `Suffix [${d.char}] → "${d.goldenKeyword} ${d.char}"`,
+            pct,
+            `Ditemukan ${d.found} keyword`,
+          );
+        } else if (d.stage === "scraping_done") {
+          updateProgress("Scraping selesai, membuat Excel...", pct);
+        }
+      }
+
+      function showGoldenKeywords(keywords) {
+        goldenCard.classList.remove("hidden");
+        const list = document.getElementById("goldenList");
+        list.innerHTML = "";
+        keywords.forEach((kw, i) => {
+          const li = document.createElement("li");
+          li.className = "flex items-center gap-2 text-xs";
+          li.innerHTML = `<span class="w-5 h-5 rounded-full bg-yellow-500/20 text-yellow-400 flex items-center justify-center text-[10px] font-bold flex-shrink-0">${i + 1}</span><span class="text-slate-300">${kw}</span>`;
+          list.appendChild(li);
+        });
+      }
+
+      function handleDone(d) {
+        isRunning = false;
+        updateProgress("Selesai!", 100);
+
+        // Stats
+        statsCard.classList.remove("hidden");
+        document.getElementById("statTotal").textContent =
+          d.summary.total.toLocaleString();
+        document.getElementById("statGolden").textContent = d.summary.golden;
+        document.getElementById("statBuying").textContent =
+          d.summary.buying.toLocaleString();
+        document.getElementById("statLongtail").textContent =
+          d.summary.longtail.toLocaleString();
+        document.getElementById("statCompetitor").textContent =
+          d.summary.competitor.toLocaleString();
+
+        // Download button
+        const dlBtn = document.getElementById("downloadBtn");
+        dlBtn.href = d.downloadUrl;
+        dlBtn.classList.remove("hidden");
+
+        // Notepad txt button
+        const txtBtn = document.getElementById("txtBtn");
+        txtBtn.href = d.txtUrl;
+        txtBtn.classList.remove("hidden");
+
+        setStatus("done");
+        resetBtn();
+        loadFiles();
+
+        // Final log
+        appendLog("");
+        appendLog("═══════════════════════════════", "dim");
+        appendLog("🎉 Proses selesai! File Excel siap didownload.", "success");
+      }
+
+      function resetUI() {
+        isRunning = false;
+        btnCancel.classList.add("hidden");
+        btnCancel.classList.remove("flex");
+        btnCancel.disabled = false;
+        btnCancel.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Stop / Cancel`;
+        resetBtn();
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+      }
+
+      function resetBtn() {
+        btnStart.disabled = false;
+        btnStart.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Mulai Scraping`;
+      }
+
+      // ─── FILE MANAGER ───
+      async function loadFiles() {
+        const container = document.getElementById("fileList");
+        try {
+          const res = await fetch("/api/files");
+          const { files } = await res.json();
+          if (!files.length) {
+            container.innerHTML =
+              '<p class="text-slate-600">Belum ada file output.</p>';
+            return;
+          }
+          container.innerHTML = "";
+          files.forEach((f) => {
+            const size = (f.size / 1024).toFixed(1) + " KB";
+            const date = new Date(f.created).toLocaleDateString("id-ID", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+            const row = document.createElement("div");
+            row.className =
+              "flex items-center justify-between bg-slate-800 rounded-lg px-3 py-2 gap-2";
+            row.innerHTML = `
         <div class="min-w-0">
-          <p class="text-slate-300 truncate text-[11px]">${f.name.replace('keyword-result-','').replace('.xlsx','')}</p>
+          <p class="text-slate-300 truncate text-[11px]">${f.name.replace("keyword-result-", "").replace(".xlsx", "")}</p>
           <p class="text-slate-600 text-[10px]">${date} · ${size}</p>
         </div>
         <div class="flex gap-1.5 flex-shrink-0">
@@ -528,28 +1498,47 @@ async function loadFiles() {
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
           </button>
         </div>`;
-      container.appendChild(row);
-    });
-  } catch {
-    container.innerHTML = '<p class="text-red-500">Gagal memuat file.</p>';
-  }
-}
+            container.appendChild(row);
+          });
+        } catch {
+          container.innerHTML =
+            '<p class="text-red-500">Gagal memuat file.</p>';
+        }
+      }
 
-async function deleteFile(filename, btn) {
-  if (!confirm(`Hapus ${filename}?`)) return;
-  btn.disabled = true;
-  await fetch(`/api/files/${filename}`, { method: 'DELETE' });
-  loadFiles();
-}
+      async function deleteFile(filename, btn) {
+        const confirmed = await showCustomModal({ 
+          title: "Hapus File", 
+          message: `Apakah Anda yakin ingin menghapus ${filename}?`, 
+          type: "danger", 
+          isConfirm: true 
+        });
+        if (!confirmed) return;
+        
+        btn.disabled = true;
+        await fetch(`/api/files/${filename}`, { method: "DELETE" });
+        loadFiles();
+      }
 
-// ─── EVENTS ───
-btnStart.addEventListener('click', startScraping);
-btnCancel.addEventListener('click', cancelScraping);
-keywordInput.addEventListener('keydown', e => { if (e.key === 'Enter') startScraping(); });
+      // ─── EVENTS ───
+      btnStart.addEventListener("click", startScraping);
+      btnCancel.addEventListener("click", cancelScraping);
+      keywordInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") startScraping();
+      });
 
-// Init
-loadFiles();
-setStatus('idle');
-</script>
-</body>
+      // Expose fungsi ke window agar inline onclick bisa akses
+      window.deleteFile = deleteFile;
+      window.resetColors = resetColors;
+      window.loadFiles = loadFiles;
+      window.clearLog = clearLog;
+      window.clearUpload = clearUpload;
+      window.switchTab = switchTab;
+      window.toggleTheme = toggleTheme;
+
+      // Init
+      loadFiles();
+      setStatus("idle");
+    </script>
+  </body>
 </html>
